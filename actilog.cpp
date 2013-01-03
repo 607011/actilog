@@ -43,6 +43,12 @@ VOID logTimestamp()
 }
 
 
+inline VOID logFlush()
+{
+	printf("\n");
+}
+
+
 LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam)
 {
 	MSLLHOOKSTRUCT* pMouse = (MSLLHOOKSTRUCT*)lParam;
@@ -59,7 +65,8 @@ LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam)
 	case WM_RBUTTONUP:
 		{
 			logTimestamp();
-			printf("CLICK\n");
+			printf("CLICK");
+			logFlush();
 			break;
 		}
 	}
@@ -75,7 +82,8 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 	case WM_KEYUP:
 		{
 			logTimestamp();
-			printf("KEYPRESS %u\n", pKeyBoard->vkCode);
+			printf("KEYPRESS %u", pKeyBoard->vkCode);
+			logFlush();
 			break;
 		}
 	default:
@@ -89,7 +97,8 @@ VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 {
 	if (mouseDist > 0) {
 		logTimestamp();
-		printf("MOVE %ld\n", (LONG)(mouseDist + 0.5));
+		printf("MOVE %ld", (LONG)(mouseDist + 0.5));
+		logFlush();
 		mouseDist = 0;
 	}
 }
@@ -98,6 +107,7 @@ VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 int main()
 {
 	HINSTANCE appInstance = GetModuleHandle(NULL);
+	setvbuf(stdout, NULL, _IONBF, 0);
 	SetWindowsHookEx(WH_KEYBOARD_LL, LowLevelKeyboardProc, appInstance, 0);
 	SetWindowsHookEx(WH_MOUSE_LL, LowLevelMouseProc, appInstance, 0);
 	SetTimer(NULL, 0, gTimerInterval, TimerProc);
