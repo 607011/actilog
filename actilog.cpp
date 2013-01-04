@@ -56,7 +56,7 @@ int aLastHisto[256];
 bool hasHistoChanged()
 {
 	for (int i = 0; i < 256; ++i)
-		if (aHisto[i] != aLastHisto[i])
+		if (aHisto[i] != aLastHisto[i] && aHisto[i] != 0)
 			return true;
 	return false;
 }
