@@ -1,5 +1,5 @@
-/// actilog - sums up mouse movements (in pixels), counts nClicks and
-///           key presses, writes statistics to standard output.
+/// actilog - sums up mouse movements (in pixels), counts clicks and
+///           key presses, writes statistics to file or console.
 ///
 ///    Copyright (C) 2013 Oliver Lau <ola@ct.de>
 ///
@@ -24,6 +24,7 @@
 #include "log.h"
 #include "util.h"
 
+static const TCHAR* AppInfo = TEXT("actilog 1.0");
 static const UINT DefaultTimerInterval = 10;
 
 enum _long_options {
@@ -161,7 +162,7 @@ void disclaimer()
 
 void usage()
 {
-	printf("actilog - sums up mouse movements (in pixels), counts nClicks and\n"
+	printf("%s - sums up mouse movements (in pixels), counts nClicks and\n"
 		"key presses, writes statistics to standard output.\n"
 		"\n"
 		"Usage: actilog [options]\n"
@@ -179,6 +180,7 @@ void usage()
 		"  --help\n"
 		"     show this help (and license information)\n"
 		"\n",
+		AppInfo,
 		DefaultTimerInterval);
 }
 

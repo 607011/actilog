@@ -1,3 +1,5 @@
+#pragma once
+
 ///    Copyright (C) 2013 Oliver Lau <ola@ct.de>
 ///
 ///    This program is free software: you can redistribute it and/or modify
