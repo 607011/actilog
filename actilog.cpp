@@ -24,7 +24,7 @@
 #include "log.h"
 #include "util.h"
 
-static const TCHAR* AppInfo = TEXT("actilog 1.0");
+static const TCHAR* AppInfo = TEXT("actilog 1.0.1");
 static const UINT DefaultTimerInterval = 10;
 
 enum _long_options {
@@ -47,6 +47,7 @@ Logger logger;
 POINT ptLastMousePos = { LONG_MAX, LONG_MAX };
 float fMouseDist = 0;
 int nClicks = 0;
+int nDoubleClicks = 0;
 int nWheel = 0;
 bool bVerbose = false;
 bool bOverwrite = false;
@@ -82,10 +83,31 @@ LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam)
 			fMouseDist += sqrt((float)squared(ptLastMousePos.x - pMouse->pt.x) + (float)squared(ptLastMousePos.y - pMouse->pt.y));
 		ptLastMousePos = pMouse->pt;
 		break;
+#if (_WIN32_WINNT >= 0x0600)
+	case WM_MOUSEHWHEEL:
+		// fall-through
+#endif
 	case WM_MOUSEWHEEL:
 		++nWheel;
 		break;
+#if (_WIN32_WINNT >= 0x0500)
+	case WM_XBUTTONDBLCLK:
+		// fall-through
+#endif
+	case WM_LBUTTONDBLCLK:
+		// fall-through
+	case WM_MBUTTONDBLCLK:
+		// fall-through
+	case WM_RBUTTONDBLCLK:
+		++nDoubleClicks;
+		break;
+#if (_WIN32_WINNT >= 0x0500)
+	case WM_XBUTTONUP:
+		// fall-through
+#endif
 	case WM_LBUTTONUP:
+		// fall-through
+	case WM_MBUTTONUP:
 		// fall-through
 	case WM_RBUTTONUP:
 		++nClicks;
@@ -126,6 +148,10 @@ void CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 	if (nClicks > 0) {
 		logger.logWithTimestamp("CLICK %d", nClicks);
 		nClicks = 0;
+	}
+	if (nDoubleClicks > 0) {
+		logger.logWithTimestamp("DBLCLICK %d", nDoubleClicks);
+		nDoubleClicks = 0;
 	}
 	if (hasHistoChanged()) {
 		logger.logWithTimestampNoLF("KEYSTAT ");
