@@ -17,10 +17,47 @@
 #include "log.h"
 #include <strsafe.h>
 
-HANDLE hOutputFile = NULL;
+
+Logger::Logger()
+	: hOutputFile(NULL)
+	, pszOutputFile("CONOUT$")
+{
+	// ...
+}
 
 
-void logv(const TCHAR* pszFormat, va_list args)
+Logger::~Logger()
+{
+	close();
+}
+
+
+void Logger::close()
+{
+	if (hOutputFile)
+		CloseHandle(hOutputFile);
+	hOutputFile = NULL;
+}
+
+
+void Logger::setFilename(const TCHAR* pszFilename)
+{
+	if (pszFilename)
+		pszOutputFile = pszFilename;
+}
+
+
+bool Logger::open(bool bOverwrite, const TCHAR* pszFilename)
+{
+	close();
+	if (pszFilename)
+		setFilename(pszFilename);
+	hOutputFile = CreateFile(pszOutputFile, bOverwrite? GENERIC_WRITE : FILE_APPEND_DATA, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+	return hOutputFile != INVALID_HANDLE_VALUE;
+}
+
+
+void Logger::logv(const TCHAR* pszFormat, va_list args)
 {
 	static const DWORD dwBufSize = 2048;
 	TCHAR pszDest[dwBufSize];
@@ -32,7 +69,7 @@ void logv(const TCHAR* pszFormat, va_list args)
 }
 
 
-void log(const TCHAR* pszFormat, ...)
+void Logger::log(const TCHAR* pszFormat, ...)
 {
 	va_list argp;
 	va_start(argp, pszFormat);
@@ -41,7 +78,7 @@ void log(const TCHAR* pszFormat, ...)
 }
 
 
-void logTimestamp()
+void Logger::logTimestamp()
 {
 	SYSTEMTIME t;
 	GetLocalTime(&t);
@@ -49,32 +86,32 @@ void logTimestamp()
 }
 
 
-void logFlush()
+void Logger::flush()
 {
 	log("\r\n");
 	FlushFileBuffers(hOutputFile);
 }
 
 
-void logWithTimestamp(const TCHAR* pszFormat, ...)
+void Logger::logWithTimestamp(const TCHAR* pszFormat, ...)
 {
 	va_list argp;
 	va_start(argp, pszFormat);
 	logTimestamp();
 	logv(pszFormat, argp);
 	va_end(argp);
-	logFlush();
+	flush();
 }
 
 
-void logWithTimestampNoLFv(const TCHAR* pszFormat, va_list argp)
+void Logger::logWithTimestampNoLFv(const TCHAR* pszFormat, va_list argp)
 {
 	logTimestamp();
 	logv(pszFormat, argp);
 }
 
 
-void logWithTimestampNoLF(const TCHAR* pszFormat, ...)
+void Logger::logWithTimestampNoLF(const TCHAR* pszFormat, ...)
 {
 	va_list argp;
 	va_start(argp, pszFormat);

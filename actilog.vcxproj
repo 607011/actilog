@@ -97,6 +97,7 @@
   <ItemGroup>
     <ClInclude Include="getopt\getopt.h" />
     <ClInclude Include="log.h" />
+    <ClInclude Include="util.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

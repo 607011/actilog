@@ -18,39 +18,37 @@
 ///
 
 #include <windows.h>
-#include <windowsx.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <math.h>
 #include "getopt/getopt.h"
 #include "log.h"
+#include "util.h"
 
-static const UINT DefaultTimerInterval = 10*1000;
+static const UINT DefaultTimerInterval = 10;
 
 enum _long_options {
 	SELECT_HELP = 0x1,
 	SELECT_MOVE_INTERVAL,
-	SELECT_OUTPUT_FILE
+	SELECT_OUTPUT_FILE,
+	SELECT_OVERWRITE
 };
 
 static struct option long_options[] = {
 	{ "output",        required_argument, 0, SELECT_OUTPUT_FILE },
 	{ "move-interval", required_argument, 0, SELECT_MOVE_INTERVAL },
 	{ "help",          no_argument, 0, SELECT_HELP },
+	{ "overwrite",     no_argument, 0, SELECT_OVERWRITE },
 	{ NULL,            0, 0, 0 }
 };
 
 
-template <typename T>
-T squared(T x) { return x*x; }
-
-
-PSTR pszOutputFile = "CONOUT$";
-POINT lastMousePos = { LONG_MAX, LONG_MAX };
+Logger logger;
+POINT ptLastMousePos = { LONG_MAX, LONG_MAX };
 float fMouseDist = 0;
 int nClicks = 0;
 int nWheel = 0;
 bool bVerbose = false;
+bool bOverwrite = false;
 int aHisto[256];
 int aLastHisto[256];
 
@@ -79,9 +77,9 @@ LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam)
 	switch (wParam)
 	{
 	case WM_MOUSEMOVE:
-		if (lastMousePos.x < LONG_MAX && lastMousePos.y < LONG_MAX)
-			fMouseDist += sqrt((float)squared(lastMousePos.x - pMouse->pt.x) + (float)squared(lastMousePos.y - pMouse->pt.y));
-		lastMousePos = pMouse->pt;
+		if (ptLastMousePos.x < LONG_MAX && ptLastMousePos.y < LONG_MAX)
+			fMouseDist += sqrt((float)squared(ptLastMousePos.x - pMouse->pt.x) + (float)squared(ptLastMousePos.y - pMouse->pt.y));
+		ptLastMousePos = pMouse->pt;
 		break;
 	case WM_MOUSEWHEEL:
 		++nWheel;
@@ -117,25 +115,25 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 void CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 {
 	if (fMouseDist > 0) {
-		logWithTimestamp("MOVE %f", fMouseDist);
+		logger.logWithTimestamp("MOVE %f", fMouseDist);
 		fMouseDist = 0;
 	}
 	if (nWheel > 0) {
-		logWithTimestamp("WHEEL %d", nWheel);
+		logger.logWithTimestamp("WHEEL %d", nWheel);
 		nWheel = 0;
 	}
 	if (nClicks > 0) {
-		logWithTimestamp("CLICK %d", nClicks);
+		logger.logWithTimestamp("CLICK %d", nClicks);
 		nClicks = 0;
 	}
 	if (hasHistoChanged()) {
-		logWithTimestampNoLF("KEYSTAT ");
+		logger.logWithTimestampNoLF("KEYSTAT ");
 		for (int i = 0; i < 256; ++i) {
-			log("%d", aHisto[i]);
+			logger.log("%d", aHisto[i]);
 			if (i < 255)
-				log(",");
+				logger.log(",");
 		}
-		logFlush();
+		logger.flush();
 		clearHistogram();
 	}
 }
@@ -171,13 +169,17 @@ void usage()
 		"  -o file\n"
 		"  --output file\n"
 		"     write to 'file' instead of console\n"
+		"  --overwrite\n"
+		"     do not append to file\n"
 		"  -i interval\n"
 		"     sum up mouse movements every 'interval' seconds\n"
+		"     (default: %d seconds)\n"
 		"  -h\n"
 		"  -?\n"
 		"  --help\n"
 		"     show this help (and license information)\n"
-		"\n");
+		"\n",
+		DefaultTimerInterval);
 }
 
 
@@ -200,6 +202,9 @@ int main(int argc, TCHAR* argv[])
 			usage();
 			disclaimer();
 			return EXIT_SUCCESS;
+		case SELECT_OVERWRITE:
+			bOverwrite = true;
+			break;
 		case 'o':
 			// fall-through
 		case SELECT_OUTPUT_FILE:
@@ -207,7 +212,7 @@ int main(int argc, TCHAR* argv[])
 				usage();
 				return EXIT_FAILURE;
 			}
-			pszOutputFile = optarg;
+			logger.setFilename(optarg);
 			break;
 		case 'i':
 			// fall-through
@@ -216,7 +221,7 @@ int main(int argc, TCHAR* argv[])
 				usage();
 				return EXIT_FAILURE;
 			}
-			uTimerInterval = 1000 * atoi(optarg);
+			uTimerInterval = atoi(optarg);
 			break;
 		default:
 			usage();
@@ -225,17 +230,17 @@ int main(int argc, TCHAR* argv[])
 	}
 	SecureZeroMemory(aHisto, 256*sizeof(aHisto[0]));
 	SecureZeroMemory(aLastHisto, 256*sizeof(aLastHisto[0]));
-	hOutputFile = CreateFile(pszOutputFile, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
-	if (hOutputFile == INVALID_HANDLE_VALUE) {
-		fprintf(stderr, "cannot create file '%s'\n", pszOutputFile);
+	bool success = logger.open(bOverwrite);
+	if (!success) {
+		fprintf(stderr, "cannot create file '%s'\n", logger.filename());
 		return EXIT_FAILURE;
 	}
 	if (bVerbose)
-		logWithTimestamp("START interval = %d", uTimerInterval);
+		logger.logWithTimestamp("START interval = %d secs", uTimerInterval);
 	HINSTANCE hApp = GetModuleHandle(NULL);
 	HHOOK hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, LowLevelKeyboardProc, hApp, 0);
 	HHOOK hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, LowLevelMouseProc, hApp, 0);
-	UINT_PTR uIDTimer = SetTimer(NULL, 0, uTimerInterval, TimerProc);
+	UINT_PTR uIDTimer = SetTimer(NULL, 0, 1000 * uTimerInterval, TimerProc);
 	MSG msg;
 	while (GetMessage(&msg, NULL, 0, 0) > 0) {
 		TranslateMessage(&msg);
@@ -245,8 +250,7 @@ int main(int argc, TCHAR* argv[])
 	UnhookWindowsHookEx(hMouseHook);
 	UnhookWindowsHookEx(hKeyboardHook);
 	if (bVerbose)
-		logWithTimestamp("STOP");
-	if (hOutputFile)
-		CloseHandle(hOutputFile);
+		logger.logWithTimestamp("STOP");
+	logger.close();
 	return EXIT_SUCCESS;
 }

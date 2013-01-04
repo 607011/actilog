@@ -1,5 +1,3 @@
-#pragma once
-
 ///    Copyright (C) 2013 Oliver Lau <ola@ct.de>
 ///
 ///    This program is free software: you can redistribute it and/or modify
@@ -16,28 +14,5 @@
 ///    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ///
 
-#include <windows.h>
-#include <tchar.h>
-#include <stdarg.h>
-
-class Logger {
-public:
-	Logger();
-	~Logger();
-	void setFilename(const TCHAR* pszFilename);
-	bool open(bool bOverwrite, const TCHAR* pszFilename = NULL);
-	void log(const TCHAR* pszFormat, ...);
-	void flush();
-	void close();
-	void logWithTimestamp(const TCHAR* pszFormat, ...);
-	void logWithTimestampNoLF(const TCHAR* pszFormat, ...);
-	const TCHAR* filename() const { return pszOutputFile; }
-
-private:
-	const TCHAR* pszOutputFile;
-	HANDLE hOutputFile;
-	void logv(const TCHAR* pszFormat, va_list args);
-	void logTimestamp();
-	void logWithTimestampNoLFv(const TCHAR* pszFormat, va_list argp);
-};
-
+template <typename T>
+T squared(T x) { return x*x; }
