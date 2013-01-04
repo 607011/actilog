@@ -172,7 +172,7 @@ void usage()
 		"  --overwrite\n"
 		"     do not append to file\n"
 		"  -i interval\n"
-		"     sum up mouse movements every 'interval' seconds\n"
+		"     log summarized mouse events every 'interval' seconds\n"
 		"     (default: %d seconds)\n"
 		"  -h\n"
 		"  -?\n"
