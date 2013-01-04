@@ -1,4 +1,4 @@
-/// actilog - sums up mouse movements (in pixels), counts clicks and
+/// actilog - sums up mouse movements (in pixels), counts nClicks and
 ///           key presses, writes statistics to standard output.
 ///
 ///    Copyright (C) 2013 Oliver Lau <ola@ct.de>
@@ -16,28 +16,25 @@
 ///    You should have received a copy of the GNU General Public License
 ///    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ///
-///
-/// Usage: actilog.exe > logfile.txt
-/// 
 
 #include <windows.h>
 #include <windowsx.h>
-#include <cstdio>
-#include <cmath>
-
+#include <stdarg.h>
+#include <stdio.h>
+#include <math.h>
 #include "getopt/getopt.h"
+#include "log.h"
 
-
-CONST UINT DefaultTimerInterval = 10*1000;
+static const UINT DefaultTimerInterval = 10*1000;
 
 enum _long_options {
 	SELECT_HELP = 0x1,
-	SELECT_SECURE,
-	SELECT_MOVE_INTERVAL
+	SELECT_MOVE_INTERVAL,
+	SELECT_OUTPUT_FILE
 };
 
 static struct option long_options[] = {
-	{ "secure",        no_argument, 0, SELECT_SECURE },
+	{ "output",        required_argument, 0, SELECT_OUTPUT_FILE },
 	{ "move-interval", required_argument, 0, SELECT_MOVE_INTERVAL },
 	{ "help",          no_argument, 0, SELECT_HELP },
 	{ NULL,            0, 0, 0 }
@@ -48,44 +45,31 @@ template <typename T>
 T squared(T x) { return x*x; }
 
 
+PSTR pszOutputFile = "CONOUT$";
 POINT lastMousePos = { LONG_MAX, LONG_MAX };
-DOUBLE mouseDist = 0;
-BOOL bSecure = FALSE;
-BOOL bVerbose = FALSE;
-LONG aHisto[256];
-LONG aLastHisto[256];
+float fMouseDist = 0;
+int nClicks = 0;
+int nWheel = 0;
+bool bVerbose = false;
+int aHisto[256];
+int aLastHisto[256];
 
 
-BOOL hasHistoChanged()
+bool hasHistoChanged()
 {
-	for (int i = 0; i < 256; ++i) {
+	for (int i = 0; i < 256; ++i)
 		if (aHisto[i] != aLastHisto[i])
-			return TRUE;
-	}
-	return FALSE;
+			return true;
+	return false;
 }
 
 
-VOID clearHistogram()
+void clearHistogram()
 {
 	for (int i = 0; i < 256; ++i) {
 		aLastHisto[i] = aHisto[i];
 		aHisto[i] = 0;
 	}
-}
-
-
-VOID logTimestamp()
-{
-	SYSTEMTIME t;
-	GetLocalTime(&t);
-	printf("%4d-%02d-%02d %02d:%02d:%02d ", t.wYear, t.wMonth, t.wDay, t.wHour, t.wMinute, t.wSecond);
-}
-
-
-inline VOID logFlush()
-{
-	printf("\n");
 }
 
 
@@ -96,20 +80,16 @@ LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_MOUSEMOVE:
 		if (lastMousePos.x < LONG_MAX && lastMousePos.y < LONG_MAX)
-			mouseDist += sqrt((DOUBLE)squared(lastMousePos.x - pMouse->pt.x) + (DOUBLE)squared(lastMousePos.y - pMouse->pt.y));
+			fMouseDist += sqrt((float)squared(lastMousePos.x - pMouse->pt.x) + (float)squared(lastMousePos.y - pMouse->pt.y));
 		lastMousePos = pMouse->pt;
 		break;
 	case WM_MOUSEWHEEL:
-		logTimestamp();
-		printf("WHEEL");
-		logFlush();
+		++nWheel;
 		break;
 	case WM_LBUTTONUP:
 		// fall-through
 	case WM_RBUTTONUP:
-		logTimestamp();
-		printf("CLICK");
-		logFlush();
+		++nClicks;
 		break;
 	}
 	return 0;
@@ -123,15 +103,8 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_KEYUP:
 		{
-			if (bSecure) {
-				if (pKeyBoard->vkCode >= 0 && pKeyBoard->vkCode < 256)
-					++aHisto[pKeyBoard->vkCode];
-			}
-			else {
-				logTimestamp();
-				printf("KEY %u", pKeyBoard->vkCode);
-				logFlush();
-			}
+			if (pKeyBoard->vkCode >= 0 && pKeyBoard->vkCode < 256)
+				++aHisto[pKeyBoard->vkCode];
 			break;
 		}
 	default:
@@ -141,21 +114,26 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 }
 
 
-VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
+void CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 {
-	if (mouseDist > 0) {
-		logTimestamp();
-		printf("MOVE %ld", (LONG)(mouseDist + 0.5));
-		logFlush();
-		mouseDist = 0;
+	if (fMouseDist > 0) {
+		logWithTimestamp("MOVE %f", fMouseDist);
+		fMouseDist = 0;
 	}
-	if (bSecure && hasHistoChanged()) {
-		logTimestamp();
-		printf("KEYSTAT ");
+	if (nWheel > 0) {
+		logWithTimestamp("WHEEL %d", nWheel);
+		nWheel = 0;
+	}
+	if (nClicks > 0) {
+		logWithTimestamp("CLICK %d", nClicks);
+		nClicks = 0;
+	}
+	if (hasHistoChanged()) {
+		logWithTimestampNoLF("KEYSTAT ");
 		for (int i = 0; i < 256; ++i) {
-			printf("%d", aHisto[i]);
+			log("%d", aHisto[i]);
 			if (i < 255)
-				printf(",");
+				log(",");
 		}
 		logFlush();
 		clearHistogram();
@@ -163,7 +141,7 @@ VOID CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 }
 
 
-VOID disclaimer()
+void disclaimer()
 {
 	printf("\n\n\n"
 		" Copyright (c) 2013 Oliver Lau <ola@ct.de>\n"
@@ -183,17 +161,18 @@ VOID disclaimer()
 }
 
 
-VOID usage()
+void usage()
 {
-	printf("actilog - sums up mouse movements (in pixels), counts clicks and\n"
+	printf("actilog - sums up mouse movements (in pixels), counts nClicks and\n"
 		"key presses, writes statistics to standard output.\n"
 		"\n"
 		"Usage: actilog [options]\n"
 		"\n"
-		"  -s\n"
-		"     secure mode (do not log key codes)\n"
+		"  -o file\n"
+		"  --output file\n"
+		"     write to 'file' instead of console\n"
 		"  -i interval\n"
-		"     sum up mouse movements every interval seconds\n"
+		"     sum up mouse movements every 'interval' seconds\n"
 		"  -h\n"
 		"  -?\n"
 		"  --help\n"
@@ -202,18 +181,18 @@ VOID usage()
 }
 
 
-int main(int argc, char* argv[])
+int main(int argc, TCHAR* argv[])
 {
 	UINT uTimerInterval = DefaultTimerInterval;
 	for (;;) {
 		int option_index = 0;
-		int c = getopt_long(argc, argv, "h?i:sv", long_options, &option_index);
+		int c = getopt_long(argc, argv, "h?i:vo:", long_options, &option_index);
 		if (c == -1)
 			break;
 		switch (c)
 		{
 		case 'v':
-			bVerbose = TRUE;
+			bVerbose = true;
 			break;
 		case '?':
 			// fall-through
@@ -221,11 +200,14 @@ int main(int argc, char* argv[])
 			usage();
 			disclaimer();
 			return EXIT_SUCCESS;
-			break;
-		case 's':
+		case 'o':
 			// fall-through
-		case SELECT_SECURE:
-			bSecure = TRUE;
+		case SELECT_OUTPUT_FILE:
+			if (optarg == NULL) {
+				usage();
+				return EXIT_FAILURE;
+			}
+			pszOutputFile = optarg;
 			break;
 		case 'i':
 			// fall-through
@@ -239,17 +221,17 @@ int main(int argc, char* argv[])
 		default:
 			usage();
 			return EXIT_FAILURE;
-			break;
 		}
-	}
-	setvbuf(stdout, NULL, _IONBF, 0);
-	if (bVerbose) {
-		logTimestamp();
-		printf("START interval = %d, secure = %d", uTimerInterval, bSecure);
-		logFlush();
 	}
 	SecureZeroMemory(aHisto, 256*sizeof(aHisto[0]));
 	SecureZeroMemory(aLastHisto, 256*sizeof(aLastHisto[0]));
+	hOutputFile = CreateFile(pszOutputFile, GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_NEW, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (hOutputFile == INVALID_HANDLE_VALUE) {
+		fprintf(stderr, "cannot create file '%s'\n", pszOutputFile);
+		return EXIT_FAILURE;
+	}
+	if (bVerbose)
+		logWithTimestamp("START interval = %d", uTimerInterval);
 	HINSTANCE hApp = GetModuleHandle(NULL);
 	HHOOK hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, LowLevelKeyboardProc, hApp, 0);
 	HHOOK hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, LowLevelMouseProc, hApp, 0);
@@ -262,10 +244,9 @@ int main(int argc, char* argv[])
 	KillTimer(NULL, uIDTimer);
 	UnhookWindowsHookEx(hMouseHook);
 	UnhookWindowsHookEx(hKeyboardHook);
-	if (bVerbose) {
-		logTimestamp();
-		printf("STOP");
-		logFlush();
-	}
+	if (bVerbose)
+		logWithTimestamp("STOP");
+	if (hOutputFile)
+		CloseHandle(hOutputFile);
 	return EXIT_SUCCESS;
 }
