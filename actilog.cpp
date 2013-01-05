@@ -20,11 +20,11 @@
 #include <windows.h>
 #include <stdio.h>
 #include <math.h>
-#include "getopt/getopt.h"
+#include <getopt.h>
 #include "log.h"
 #include "util.h"
 
-static const TCHAR* AppInfo = TEXT("actilog 1.0.1");
+static const TCHAR* AppInfo = TEXT("actilog 1.0.2");
 static const UINT DefaultTimerInterval = 10;
 
 enum _long_options {

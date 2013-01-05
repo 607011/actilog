@@ -34,6 +34,7 @@ public:
 	const TCHAR* filename() const { return pszOutputFile; }
 
 private:
+	static const TCHAR* ConsoleOutputFile;
 	const TCHAR* pszOutputFile;
 	HANDLE hOutputFile;
 	void logv(const TCHAR* pszFormat, va_list args);

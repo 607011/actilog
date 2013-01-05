@@ -2,6 +2,11 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "actilog", "actilog.vcxproj", "{137D9B60-DF65-4C73-9C09-1614DA5AF6D9}"
+	ProjectSection(ProjectDependencies) = postProject
+		{FB10A353-C026-45E9-BC20-1FC81B036C03} = {FB10A353-C026-45E9-BC20-1FC81B036C03}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "getopt", "getopt\getopt.vcxproj", "{FB10A353-C026-45E9-BC20-1FC81B036C03}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,6 +18,10 @@ Global
 		{137D9B60-DF65-4C73-9C09-1614DA5AF6D9}.Debug|Win32.Build.0 = Debug|Win32
 		{137D9B60-DF65-4C73-9C09-1614DA5AF6D9}.Release|Win32.ActiveCfg = Release|Win32
 		{137D9B60-DF65-4C73-9C09-1614DA5AF6D9}.Release|Win32.Build.0 = Release|Win32
+		{FB10A353-C026-45E9-BC20-1FC81B036C03}.Debug|Win32.ActiveCfg = Debug|Win32
+		{FB10A353-C026-45E9-BC20-1FC81B036C03}.Debug|Win32.Build.0 = Debug|Win32
+		{FB10A353-C026-45E9-BC20-1FC81B036C03}.Release|Win32.ActiveCfg = Release|Win32
+		{FB10A353-C026-45E9-BC20-1FC81B036C03}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

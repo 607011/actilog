@@ -16,11 +16,15 @@
 
 #include "log.h"
 #include <strsafe.h>
+#include <Shlwapi.h>
+
+
+const TCHAR* Logger::ConsoleOutputFile = "CONOUT$";
 
 
 Logger::Logger()
 	: hOutputFile(NULL)
-	, pszOutputFile("CONOUT$")
+	, pszOutputFile(ConsoleOutputFile)
 {
 	// ...
 }
@@ -52,6 +56,8 @@ bool Logger::open(bool bOverwrite, const TCHAR* pszFilename)
 	close();
 	if (pszFilename)
 		setFilename(pszFilename);
+	if (StrCmp(pszOutputFile, ConsoleOutputFile) == 0)
+		bOverwrite = true;
 	hOutputFile = CreateFile(pszOutputFile, bOverwrite? GENERIC_WRITE : FILE_APPEND_DATA, FILE_SHARE_READ, NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	return hOutputFile != INVALID_HANDLE_VALUE;
 }
