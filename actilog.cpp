@@ -142,7 +142,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 void CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 {
 	if (fMouseDist > 0) {
-		logger.logWithTimestamp("MOVE %f (%f m)", fMouseDist, fMouseDist / fDPI * 2.54f / 100.0f);
+		logger.logWithTimestamp("MOVE %f px (%f m)", fMouseDist, fMouseDist / fDPI * 2.54f / 100.0f);
 		fMouseDist = 0;
 	}
 	if (nWheel > 0) {
@@ -192,7 +192,7 @@ void disclaimer()
 
 void usage()
 {
-	printf("%s - sums up mouse movements (in pixels), counts nClicks and\n"
+	printf("%s - sums up mouse movements, counts nClicks and\n"
 		"key presses, writes statistics to standard output.\n"
 		"\n"
 		"Usage: actilog [options]\n"
@@ -270,7 +270,7 @@ int main(int argc, TCHAR* argv[])
 	SecureZeroMemory(aLastHisto, 256*sizeof(aLastHisto[0]));
 	bool success = logger.open(bOverwrite);
 	if (!success) {
-		fprintf(stderr, "cannot create file '%s'\n", logger.filename());
+		fprintf(stderr, "Fatal error: cannot create file '%s'\n", logger.filename());
 		return EXIT_FAILURE;
 	}
 	if (bVerbose)
