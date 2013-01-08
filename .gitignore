@@ -1,0 +1,10 @@
+Debug/*
+Release/*
+deploy/*
+*.sdf
+*.suo
+log.txt
+*.vcxproj.user
+*.opensdf
+getopt/Debug/*
+getopt/Release/*

@@ -24,13 +24,13 @@
 #include "log.h"
 #include "util.h"
 
-static const TCHAR* AppInfo = TEXT("actilog 1.0.3");
+static const TCHAR* AppInfo = TEXT("actilog 1.0.4");
 static const UINT DefaultTimerInterval = 600;
-static const float DefaultDPI = 92.0f;
+static const double DefaultDPI = 92.0;
 
 enum _long_options {
 	SELECT_HELP = 0x1,
-	SELECT_MOVE_INTERVAL,
+	SELECT_INTERVAL,
 	SELECT_OUTPUT_FILE,
 	SELECT_OVERWRITE,
 	SELECT_DPI
@@ -38,7 +38,7 @@ enum _long_options {
 
 static struct option long_options[] = {
 	{ "output",        required_argument, 0, SELECT_OUTPUT_FILE },
-	{ "move-interval", required_argument, 0, SELECT_MOVE_INTERVAL },
+	{ "interval",      required_argument, 0, SELECT_INTERVAL },
 	{ "help",          no_argument, 0, SELECT_HELP },
 	{ "overwrite",     no_argument, 0, SELECT_OVERWRITE },
 	{ "dpi",           required_argument, 0, SELECT_DPI },
@@ -48,8 +48,8 @@ static struct option long_options[] = {
 
 Logger logger;
 POINT ptLastMousePos = { LONG_MAX, LONG_MAX };
-float fMouseDist = 0;
-float fDPI = DefaultDPI;
+double fMouseDist = 0;
+double fDPI = DefaultDPI;
 int nClicks = 0;
 int nDoubleClicks = 0;
 int nWheel = 0;
@@ -59,21 +59,12 @@ int aHisto[256];
 int aLastHisto[256];
 
 
-bool hasHistoChanged()
+inline bool hasHistoChanged()
 {
 	for (int i = 0; i < 256; ++i)
 		if (aHisto[i] != aLastHisto[i] && aHisto[i] != 0)
 			return true;
 	return false;
-}
-
-
-void clearHistogram()
-{
-	for (int i = 0; i < 256; ++i) {
-		aLastHisto[i] = aHisto[i];
-		aHisto[i] = 0;
-	}
 }
 
 
@@ -84,7 +75,7 @@ LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_MOUSEMOVE:
 		if (ptLastMousePos.x < LONG_MAX && ptLastMousePos.y < LONG_MAX)
-			fMouseDist += sqrt((float)squared(ptLastMousePos.x - pMouse->pt.x) + (float)squared(ptLastMousePos.y - pMouse->pt.y));
+			fMouseDist += sqrt((double)squared(ptLastMousePos.x - pMouse->pt.x) + (double)squared(ptLastMousePos.y - pMouse->pt.y));
 		ptLastMousePos = pMouse->pt;
 		break;
 #if (_WIN32_WINNT >= 0x0600)
@@ -128,8 +119,9 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 	{
 	case WM_KEYUP:
 		{
-			if (pKeyBoard->vkCode >= 0 && pKeyBoard->vkCode < 256)
-				++aHisto[pKeyBoard->vkCode];
+			const DWORD dwKeyCode = pKeyBoard->vkCode;
+			if (dwKeyCode >= 0 && dwKeyCode < 256)
+				++aHisto[dwKeyCode];
 			break;
 		}
 	default:
@@ -142,7 +134,7 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 void CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 {
 	if (fMouseDist > 0) {
-		logger.logWithTimestamp("MOVE %f px (%f m)", fMouseDist, fMouseDist / fDPI * 2.54f / 100.0f);
+		logger.logWithTimestamp("MOVE %lf px (%lf m)", fMouseDist, fMouseDist / fDPI * 2.54 / 100);
 		fMouseDist = 0;
 	}
 	if (nWheel > 0) {
@@ -165,7 +157,10 @@ void CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 				logger.log(",");
 		}
 		logger.flush();
-		clearHistogram();
+		for (int i = 0; i < 256; ++i) {
+			aLastHisto[i] = aHisto[i];
+			aHisto[i] = 0;
+		}
 	}
 }
 
@@ -202,10 +197,11 @@ void usage()
 		"     write to 'file' instead of console\n"
 		"  --dpi x\n"
 		"     multiply mouse movements by x to calculate total distance in m\n"
-		"     (default: 92.0)\n"
+		"     (default: %lf)\n"
 		"  --overwrite\n"
 		"     do not append to file\n"
 		"  -i interval\n"
+		"  --interval interval\n"
 		"     log summarized mouse events every 'interval' seconds\n"
 		"     (default: %d seconds)\n"
 		"  -h\n"
@@ -214,6 +210,7 @@ void usage()
 		"     show this help (and license information)\n"
 		"\n",
 		AppInfo,
+		DefaultDPI,
 		DefaultTimerInterval);
 }
 
@@ -250,11 +247,11 @@ int main(int argc, TCHAR* argv[])
 			logger.setFilename(optarg);
 			break;
 		case SELECT_DPI:
-			fDPI = (float)atof(optarg);
+			fDPI = atof(optarg);
 			break;
 		case 'i':
 			// fall-through
-		case SELECT_MOVE_INTERVAL:
+		case SELECT_INTERVAL:
 			if (optarg == NULL) {
 				usage();
 				return EXIT_FAILURE;
@@ -274,7 +271,7 @@ int main(int argc, TCHAR* argv[])
 		return EXIT_FAILURE;
 	}
 	if (bVerbose)
-		logger.logWithTimestamp("START interval = %d secs, dpi = %f", uTimerInterval, fDPI);
+		logger.logWithTimestamp("START interval = %d secs, dpi = %lf", uTimerInterval, fDPI);
 	HINSTANCE hApp = GetModuleHandle(NULL);
 	HHOOK hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, LowLevelKeyboardProc, hApp, 0);
 	HHOOK hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, LowLevelMouseProc, hApp, 0);
