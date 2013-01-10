@@ -18,8 +18,7 @@
 #include <strsafe.h>
 #include <Shlwapi.h>
 
-
-const TCHAR* Logger::ConsoleOutputFile = "CONOUT$";
+const TCHAR* Logger::ConsoleOutputFile = TEXT("CONOUT$");
 
 
 Logger::Logger()

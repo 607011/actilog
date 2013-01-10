@@ -131,6 +131,33 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 }
 
 
+BOOL WINAPI CtlHandlerRoutine(DWORD dwCtrlType)
+{
+	printf("CtlHandlerRoutine(%u)\n", dwCtrlType);
+	switch (dwCtrlType) {
+	case CTRL_C_EVENT:
+		// fall-through
+	case CTRL_BREAK_EVENT:
+		logger.logWithTimestamp("BREAK");
+		PostMessage(NULL, WM_ENDSESSION, NULL, NULL);
+		ExitProcess(0);
+		return TRUE;
+	case CTRL_CLOSE_EVENT:
+		logger.logWithTimestamp("CLOSED");
+		return FALSE;
+	case CTRL_LOGOFF_EVENT:
+		logger.logWithTimestamp("LOGOFF");
+		return FALSE;
+	case CTRL_SHUTDOWN_EVENT:
+		logger.logWithTimestamp("SHUTDOWN");
+		return FALSE;
+	default:
+		break;
+	}
+	return FALSE;
+}
+
+
 void CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 {
 	if (fMouseDist > 0) {
@@ -273,6 +300,7 @@ int main(int argc, TCHAR* argv[])
 	if (bVerbose)
 		logger.logWithTimestamp("START interval = %d secs, dpi = %lf", uTimerInterval, fDPI);
 	HINSTANCE hApp = GetModuleHandle(NULL);
+	SetConsoleCtrlHandler(CtlHandlerRoutine, TRUE);
 	HHOOK hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, LowLevelKeyboardProc, hApp, 0);
 	HHOOK hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, LowLevelMouseProc, hApp, 0);
 	UINT_PTR uIDTimer = SetTimer(NULL, 0, 1000 * uTimerInterval, TimerProc);
@@ -289,3 +317,4 @@ int main(int argc, TCHAR* argv[])
 	logger.close();
 	return EXIT_SUCCESS;
 }
+

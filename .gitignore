@@ -8,3 +8,13 @@ log.txt
 *.opensdf
 getopt/Debug/*
 getopt/Release/*
+logger/Debug/*
+logger/Release/*
+actilog/Debug/*
+actilog/Release/*
+actiwin/Debug/*
+actiwin/Release/*
+*.ipch
+_UpgradeReport_Files/*
+UpgradeLog.*
+*.aps
