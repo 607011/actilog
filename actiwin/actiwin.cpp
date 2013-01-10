@@ -27,11 +27,11 @@ enum _long_options {
 
 
 static struct option long_options[] = {
-	{ "output",        required_argument, 0, SELECT_OUTPUT_FILE },
-	{ "interval",      required_argument, 0, SELECT_INTERVAL },
-	{ "help",          no_argument, 0, SELECT_HELP },
-	{ "overwrite",     no_argument, 0, SELECT_OVERWRITE },
-	{ "dpi",           required_argument, 0, SELECT_DPI },
+	{ TEXT("output"),    required_argument, 0, SELECT_OUTPUT_FILE },
+	{ TEXT("interval"),  required_argument, 0, SELECT_INTERVAL },
+	{ TEXT("help"),      no_argument, 0, SELECT_HELP },
+	{ TEXT("overwrite"), no_argument, 0, SELECT_OVERWRITE },
+	{ TEXT("dpi"),       required_argument, 0, SELECT_DPI },
 	{ NULL,            0, 0, 0 }
 };
 
@@ -130,27 +130,27 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam)
 void CALLBACK TimerProc(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime)
 {
 	if (fMouseDist > 0) {
-		logger.logWithTimestamp("MOVE %lf px (%lf m)", fMouseDist, fMouseDist / fDPI * 2.54 / 100);
+		logger.logWithTimestamp(TEXT("MOVE %lf px (%lf m)"), fMouseDist, fMouseDist / fDPI * 2.54 / 100);
 		fMouseDist = 0;
 	}
 	if (nWheel > 0) {
-		logger.logWithTimestamp("WHEEL %d", nWheel);
+		logger.logWithTimestamp(TEXT("WHEEL %d"), nWheel);
 		nWheel = 0;
 	}
 	if (nClicks > 0) {
-		logger.logWithTimestamp("CLICK %d", nClicks);
+		logger.logWithTimestamp(TEXT("CLICK %d"), nClicks);
 		nClicks = 0;
 	}
 	if (nDoubleClicks > 0) {
-		logger.logWithTimestamp("DBLCLICK %d", nDoubleClicks);
+		logger.logWithTimestamp(TEXT("DBLCLICK %d"), nDoubleClicks);
 		nDoubleClicks = 0;
 	}
 	if (hasHistoChanged()) {
-		logger.logWithTimestampNoLF("KEYSTAT ");
+		logger.logWithTimestampNoLF(TEXT("KEYSTAT "));
 		for (int i = 0; i < 256; ++i) {
-			logger.log("%d", aHisto[i]);
+			logger.log(TEXT("%d"), aHisto[i]);
 			if (i < 255)
-				logger.log(",");
+				logger.log(TEXT(","));
 		}
 		logger.flush();
 		for (int i = 0; i < 256; ++i) {
@@ -236,7 +236,7 @@ int APIENTRY _tWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPTSTR lpCm
 	UnhookWindowsHookEx(hMouseHook);
 	UnhookWindowsHookEx(hKeyboardHook);
 	if (bVerbose)
-		logger.logWithTimestamp("STOP");
+		logger.logWithTimestamp(TEXT("STOP"));
 	logger.close();
 	return (int) msg.wParam;
 }
@@ -283,16 +283,16 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	switch (message)
 	{
 	case WM_QUERYENDSESSION:
-		logger.logWithTimestamp("WM_QUERYENDSESSION");
+		logger.logWithTimestamp(TEXT("WM_QUERYENDSESSION"));
 		break;
 	case WM_ENDSESSION:
-		logger.logWithTimestamp("WM_ENDSESSION");
+		logger.logWithTimestamp(TEXT("WM_ENDSESSION"));
 		break;
 	case WM_WTSSESSION_CHANGE:
-		logger.logWithTimestamp("WM_WTSSESSION_CHANGE");
+		logger.logWithTimestamp(TEXT("WM_WTSSESSION_CHANGE"));
 		break;
 	case WM_POWER:
-		logger.logWithTimestamp("WM_POWER");
+		logger.logWithTimestamp(TEXT("WM_POWER"));
 		break;
 	case WM_COMMAND:
 		wmId    = LOWORD(wParam);
@@ -311,10 +311,12 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		}
 		break;
 	case WM_PAINT:
-		hdc = BeginPaint(hWnd, &ps);
-		// TODO: Add any drawing code here...
-		EndPaint(hWnd, &ps);
-		break;
+		{
+			hdc = BeginPaint(hWnd, &ps);
+			TextOut(hdc, 0, 0, TEXT("Blah!"), 5);
+			EndPaint(hWnd, &ps);
+			break;
+		}
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		break;

@@ -87,13 +87,13 @@ void Logger::logTimestamp()
 {
 	SYSTEMTIME t;
 	GetLocalTime(&t);
-	log("%4d-%02d-%02d %02d:%02d:%02d ", t.wYear, t.wMonth, t.wDay, t.wHour, t.wMinute, t.wSecond);
+	log(TEXT("%4d-%02d-%02d %02d:%02d:%02d "), t.wYear, t.wMonth, t.wDay, t.wHour, t.wMinute, t.wSecond);
 }
 
 
 void Logger::flush()
 {
-	log("\r\n");
+	log(TEXT("\r\n"));
 	FlushFileBuffers(hOutputFile);
 }
 
